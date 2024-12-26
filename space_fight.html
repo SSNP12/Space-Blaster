@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Blaster</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <audio id="backgroundMusic" loop>
+    <source src="https://www.fesliyanstudios.com/play-mp3/387" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const backgroundMusic = document.getElementById("backgroundMusic");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let spaceship, asteroids, keys, score, gameOver;
+
+    function initializeGame() {
+      spaceship = {
+        x: canvas.width / 2 - 20,
+        y: canvas.height - 60,
+        width: 40,
+        height: 40,
+        color: "white",
+        speed: 5,
+        bullets: [],
+      };
+
+      asteroids = [];
+      keys = {};
+      score = 0;
+      gameOver = false;
+    }
+
+    function drawSpaceship() {
+      ctx.fillStyle = spaceship.color;
+      ctx.fillRect(spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+    }
+
+    function drawBullets() {
+      ctx.fillStyle = "yellow";
+      spaceship.bullets.forEach((bullet, index) => {
+        bullet.y -= 10;
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+        if (bullet.y < 0) {
+          spaceship.bullets.splice(index, 1);
+        }
+      });
+    }
+
+    function drawAsteroids() {
+      ctx.fillStyle = "gray";
+      asteroids.forEach((asteroid, index) => {
+        asteroid.y += asteroid.speed;
+        ctx.fillRect(asteroid.x, asteroid.y, asteroid.size, asteroid.size);
+
+        // Check collision
+        if (
+          asteroid.y + asteroid.size > spaceship.y &&
+          asteroid.x < spaceship.x + spaceship.width &&
+          asteroid.x + asteroid.size > spaceship.x
+        ) {
+          gameOver = true;
+          backgroundMusic.pause(); // Stop music on game over
+        }
+
+        // Remove off-screen asteroids
+        if (asteroid.y > canvas.height) {
+          asteroids.splice(index, 1);
+        }
+      });
+    }
+
+    function spawnAsteroids() {
+      if (Math.random() < 0.02) {
+        let size = Math.random() * 30 + 20;
+        asteroids.push({
+          x: Math.random() * canvas.width,
+          y: -size,
+          size: size,
+          speed: Math.random() * 3 + 2,
+        });
+      }
+    }
+
+    function updateScore() {
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 10, 30);
+    }
+
+    function moveSpaceship() {
+      if (keys["ArrowLeft"] && spaceship.x > 0) spaceship.x -= spaceship.speed;
+      if (keys["ArrowRight"] && spaceship.x + spaceship.width < canvas.width)
+        spaceship.x += spaceship.speed;
+      if (keys["ArrowUp"] && spaceship.y > 0) spaceship.y -= spaceship.speed;
+      if (keys["ArrowDown"] && spaceship.y + spaceship.height < canvas.height)
+        spaceship.y += spaceship.speed;
+    }
+
+    function handleGameOver() {
+      ctx.fillStyle = "red";
+      ctx.font = "40px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillStyle = "white";
+      ctx.font = "20px Arial";
+      ctx.fillText("Click anywhere to play again", canvas.width / 2, canvas.height / 2 + 20);
+      
+      canvas.addEventListener("click", restartGame);
+    }
+
+    function restartGame() {
+      canvas.removeEventListener("click", restartGame);
+      initializeGame();
+      backgroundMusic.play(); // Ensure music starts again
+      gameLoop();
+    }
+
+    function gameLoop() {
+      if (gameOver) {
+        handleGameOver();
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      moveSpaceship();
+      drawSpaceship();
+      drawBullets();
+      drawAsteroids();
+      spawnAsteroids();
+      updateScore();
+
+      // Check bullet-asteroid collisions
+      spaceship.bullets.forEach((bullet, bulletIndex) => {
+        asteroids.forEach((asteroid, asteroidIndex) => {
+          if (
+            bullet.x < asteroid.x + asteroid.size &&
+            bullet.x + bullet.width > asteroid.x &&
+            bullet.y < asteroid.y + asteroid.size &&
+            bullet.y + bullet.height > asteroid.y
+          ) {
+            spaceship.bullets.splice(bulletIndex, 1);
+            asteroids.splice(asteroidIndex, 1);
+            score += 10;
+          }
+        });
+      });
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+      if (e.key === " ") {
+        spaceship.bullets.push({
+          x: spaceship.x + spaceship.width / 2 - 5,
+          y: spaceship.y,
+          width: 5,
+          height: 10,
+        });
+      }
+    });
+
+    document.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    // Start the game after the first user interaction
+    canvas.addEventListener("click", () => {
+      initializeGame();
+      backgroundMusic.play(); // Start music after user clicks
+      gameLoop();
+    });
+
+    // Display an initial message prompting the user to start
+    ctx.fillStyle = "white";
+    ctx.font = "30px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("Click anywhere to start the game!", canvas.width / 2, canvas.height / 2);
+  </script>
+</body>
+</html>
